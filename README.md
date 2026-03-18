@@ -1,4 +1,4 @@
-# Fast_RNRR
+<!--# Fast_RNRR
 This repository includes the source code of the paper "Quasi-Newton Solver for Robust Non-Rigid Registration", (CVPR2020), [https://arxiv.org/abs/2004.04322](https://arxiv.org/abs/2004.04322).
 
 Authors: Yuxin Yao, [Bailin Deng](http://www.bdeng.me/), [Weiwei Xu](http://www.cad.zju.edu.cn/home/weiweixu/) and [Juyong Zhang](http://staff.ustc.edu.cn/~juyong/).
@@ -70,4 +70,8 @@ Please cite the following papers if it helps your research:
 ```
 
 ## Acknowledgement
-This work was supported by the National Natural Science Foundation of China (No. 61672481), and Youth Innovation Promotion Association CAS (No. 2018495).
+This work was supported by the National Natural Science Foundation of China (No. 61672481), and Youth Innovation Promotion Association CAS (No. 2018495).-->
+
+# Usage
+This is only for learning purpose.
+Personal learning file on Windows11 and Arch Linux.
