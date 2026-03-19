@@ -1,7 +1,8 @@
 // typedef <origin type> <new type>;
 // typedef used in define eigen matrix and vector types
 // original:Eigen::Matrix<float,3,3,Eigen::RowMajor>
-// use 'using' to define type aliases
+// use 'using' to define type aliases, for example:
+// using Matrix33 = Eigen::Matrix<float, 3, 3, Eigen::RowMajor>;
 
 /**
  * @file Types.h
@@ -112,12 +113,14 @@ typedef Eigen::Matrix<Scalar, 12, 12, 0, 12, 12> EigenMatrix12;  ///< 12×12 固
 typedef Eigen::Transform<Scalar, 3, Eigen::Affine> Affine3;      ///< 3D 仿射变换（4×4 矩阵：旋转+平移+缩放）
 
 // ===== 四元数和角轴旋转 =====
-typedef Eigen::AngleAxis<Scalar> EigenAngleAxis;                         ///< 角轴旋转表示
+typedef Eigen::AngleAxis<Scalar> EigenAngleAxis;                         ///< 角轴旋转表示，绕哪个轴旋转了多少角度
 typedef Eigen::Quaternion<Scalar, Eigen::DontAlign> EigenQuaternion;     ///< 四元数旋转表示
+// 四元数用来表示旋转
 
 // ===== 向量类型转换工具 =====
 /**
  * @brief 将任意 3D 向量类型转换为 Eigen::Vector3
+ 用于eigen openmesh之间的向量类型转换
  */
 template<typename Vec_T>
 inline Vector3 to_eigen_vec3(const Vec_T &vec)
@@ -149,6 +152,8 @@ enum VertexState
 
 /**
  * @brief OpenMesh 自定义 Traits，为网格元素添加额外属性
+ OpenMesh 原有的顶点的属性，只包括坐标和指针
+ 利用Traits 可以为顶点和面添加额外的属性，例如测地距离、传播状态等
  *
  * 顶点属性：
  *   - geodesic_distance：从源点到该顶点的测地距离
@@ -179,24 +184,28 @@ struct TriTraits : public OpenMesh::DefaultTraits {
     EdgeAttributes(OpenMesh::Attributes::Status);
     HalfedgeAttributes(OpenMesh::Attributes::Status);
 
+    // 对顶点进行Traits添加
     VertexTraits
     {
+        // 默认构造函数，初始化 geodesic_distance 为无穷大，state 为 OUTSIDE，其他属性为 0
         VertexT() : geodesic_distance(1e100), state(OUTSIDE),incident_point(0.0),
           saddle_or_boundary(false)
         {};
     public:
-        Scalar geodesic_distance;
-        VertexState state;
-        OpenMesh::FaceHandle incident_face;
-        Scalar incident_point;
-        bool saddle_or_boundary;
+        // 自定义属性
+        Scalar geodesic_distance;       // 测地距离
+        VertexState state;              // 顶点状态
+        OpenMesh::FaceHandle incident_face;     // 入射面
+        Scalar incident_point;          // 入射点
+        bool saddle_or_boundary;        // 是否为鞍点或边界
     };
     FaceTraits
     {
+        // 默认构造函数
         FaceT() : corner_angles(0,0,0)
         {};
         public:
-        Vector3 corner_angles;
+        Vector3 corner_angles;          // 三个内角
     };
     EdgeTraits
     {
@@ -216,10 +225,19 @@ typedef OpenMesh::Vec3f Vec3;
 typedef OpenMesh::Vec3d Vec3;
 #endif
 
+/* 读取顶点
+ * Mesh mesh;
+ * Mesh::VertexHandle vh= somepoint;
+ * mesh.data(vh).geodesic_distance =1;
+ * 可以实现类似结构体的直接调用
+ */
+
 
 /**
  * @class Matrix3333
  * @brief 3×3 的四阶张量：每个元素是一个 3×3 矩阵
+ 四阶张量用于描述矩阵与矩阵之间的关系
+ 为什么要使用四阶级张量
  *
  * 用于表示四阶弹性张量等高阶数学对象。
  * 支持加减乘、转置、缩并等运算。

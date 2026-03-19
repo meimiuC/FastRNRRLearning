@@ -1,0 +1,91 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{comment}
+\usepackage[ruled]{algorithm2e}
+\usepackage{wrapfig}
+\usepackage{makecell}
+\usepackage{multirow}
+\usepackage{microtype}
+\newcommand{\tabincell}[2]{\begin{tabular}{@{}#1@{}}#2\end{tabular}}
+
+
+\newcommand{\juyong}[1]{\textcolor{red}{[Juyong:~{#1}]}}
+\newcommand{\bailin}[1]{\textcolor{cyan}{[Bailin:~{#1}]}}
+\newcommand{\surrog}[1]{\overline{#1}}
+\newcommand{\newpos}[1]{\widehat{#1}}
+\newcommand{\nua}{\nu_{\textrm{a}}}
+\newcommand{\nur}{\nu_{\textrm{r}}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\proj}{proj}
+\newcommand{\SOG}{\mathcal{R}}
+\DeclareMathOperator{\Tr}{Tr}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[pagebackref=true,breaklinks=true,letterpaper=true,colorlinks,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{5011} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+\ifcvprfinal\pagestyle{empty}\fi
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{Quasi-Newton Solver for Robust Non-Rigid Registration}
+
+\author{Yuxin Yao\textsuperscript{1} \quad Bailin Deng\textsuperscript{2} \quad Weiwei Xu\textsuperscript{3} \quad Juyong Zhang\textsuperscript{1}\thanks{Corresponding author}\\
+	\textsuperscript{1}University of Science and Technology of China \quad \textsuperscript{2}Cardiff University\quad \textsuperscript{3}Zhejiang University\\
+	{\tt\small yaoyuxin@mail.ustc.edu.cn} \quad  {\tt\small DengB3@cardiff.ac.uk}\quad  {\tt\small xww@cad.zju.edu.cn} \quad  {\tt\small juyong@ustc.edu.cn}
+%Institution1\\
+%Institution1 address\\
+%{\tt\small firstauthor@i1.org}
+% For a paper whose authors are all at the same institution,
+% omit the following lines up until the closing ``}''.
+% Additional authors and addresses can be added with ``\and'',
+% just like the second author.
+% To save space, use either the email address or home page, not both
+%\and
+%Second Author\\
+%Institution2\\
+%First line of institution2 address\\
+%{\tt\small secondauthor@i2.org}
+}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+Imperfect data (noise, outliers and partial overlap) and high degrees of freedom make non-rigid registration a classical challenging problem in computer vision. Existing methods typically adopt the $\ell_{p}$ type robust estimator to regularize the fitting and smoothness, and the proximal operator is used to solve the resulting non-smooth problem. However, the slow convergence of these algorithms limits its wide applications. In this paper, we propose a formulation for robust non-rigid registration based on a globally smooth robust estimator for data fitting and regularization, which can handle outliers and partial overlaps. We apply the majorization-minimization algorithm to the problem, which reduces each iteration to solving a simple least-squares problem with L-BFGS. Extensive experiments demonstrate the effectiveness of our method for non-rigid alignment between two shapes with outliers and partial overlap, with quantitative evaluation showing that it outperforms state-of-the-art methods in terms of registration accuracy and computational speed. The source code is available at \url{https://github.com/Juyong/Fast_RNRR}.
+\end{abstract}
+
+\input{introduction}
+\input{related}
+\input{algorithm}
+\input{results}
+\input{conclusion}
+
+\noindent \textbf{Acknowledgement}
+We thank the authors of~\cite{guo2015robust} for providing their implementation.
+This work was supported by the National Natural Science Foundation of China (No. 61672481), and Youth Innovation Promotion Association CAS (No. 2018495).
+
+{\small
+\bibliographystyle{ieee_fullname}
+\bibliography{egbib}
+}
+\input{supp}
+
+\end{document}

@@ -1,0 +1,226 @@
+\begin{thebibliography}{10}\itemsep=-1pt
+
+\bibitem{amberg2007optimal}
+Brian Amberg, Sami Romdhani, and Thomas Vetter.
+\newblock Optimal step nonrigid {ICP} algorithms for surface registration.
+\newblock In {\em IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR)}, pages 1--8. IEEE, 2007.
+
+\bibitem{Andriy2010Point}
+Myronenko Andriy and Song Xubo.
+\newblock Point set registration: coherent point drift.
+\newblock {\em IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  32(12):2262--2275, 2010.
+
+\bibitem{BeslM92}
+Paul~J. Besl and Neil~D. McKay.
+\newblock A method for registration of 3-d shapes.
+\newblock {\em {IEEE} Trans. Pattern Anal. Mach. Intell.}, 14(2):239--256,
+  1992.
+
+\bibitem{Bogo:CVPR:2014}
+Federica Bogo, Javier Romero, Matthew Loper, and Michael~J. Black.
+\newblock {FAUST}: Dataset and evaluation for {3D} mesh registration.
+\newblock In {\em Proceedings IEEE Conf. on Computer Vision and Pattern
+  Recognition (CVPR)}, Piscataway, NJ, USA, June 2014. IEEE.
+
+\bibitem{Bouaziz2013-SparseICP}
+Sofien Bouaziz, Andrea Tagliasacchi, and Mark Pauly.
+\newblock Sparse iterative closest point.
+\newblock {\em Computer Graphics Forum}, 32(5):113--123, 2013.
+
+\bibitem{boyd2011distributed}
+Stephen Boyd, Neal Parikh, Eric Chu, Borja Peleato, Jonathan Eckstein, et~al.
+\newblock Distributed optimization and statistical learning via the alternating
+  direction method of multipliers.
+\newblock {\em Foundations and Trends in Machine learning}, 3(1):1--122, 2011.
+
+\bibitem{brown2007Global}
+Benedict~J Brown and Szymon Rusinkiewicz.
+\newblock Global non-rigid alignment of 3-d scans.
+\newblock {\em ACM Transactions on Graphics (TOG)}, 26(3), 2007.
+
+\bibitem{Chui2000A}
+Haili Chui and A. Rangarajan.
+\newblock A new algorithm for non-rigid point matching.
+\newblock In {\em IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR)}, pages 44--51. IEEE, 2000.
+
+\bibitem{Daubechies2010}
+Ingrid Daubechies, Ronald DeVore, Massimo Fornasier, and C.~S{\.{i}}nan
+  G{\"{u}}nt{\"{u}}rk.
+\newblock Iteratively reweighted least squares minimization for sparse
+  recovery.
+\newblock {\em Communications on Pure and Applied Mathematics}, 63(1):1--38,
+  2010.
+
+\bibitem{dyke2019non}
+Roberto~M Dyke, Yu-Kun Lai, Paul~L Rosin, and Gary~KL Tam.
+\newblock Non-rigid registration under anisotropic deformations.
+\newblock {\em Computer Aided Geometric Design}, 71:142--156, 2019.
+
+\bibitem{Gomes2003}
+Jos{\'e} Gomes and Olivier Faugeras.
+\newblock The vector distance functions.
+\newblock {\em International Journal of Computer Vision}, 52(2):161--187, 2003.
+
+\bibitem{guo2015robust}
+Kaiwen Guo, Feng Xu, Yangang Wang, Yebin Liu, and Qionghai Dai.
+\newblock Robust non-rigid motion tracking and surface reconstruction using
+  {L0} regularization.
+\newblock In {\em IEEE International Conference on Computer Vision (ICCV)},
+  pages 3083--3091, 2015.
+
+\bibitem{ham2015robust}
+Bumsub Ham, Minsu Cho, and Jean Ponce.
+\newblock Robust image filtering using joint static and dynamic guidance.
+\newblock In {\em IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR)}, pages 4823--4831, 2015.
+
+\bibitem{holland1977robust}
+Paul~W Holland and Roy~E Welsch.
+\newblock Robust regression using iteratively reweighted least-squares.
+\newblock {\em Communications in Statistics-theory and Methods}, 6(9):813--827,
+  1977.
+
+\bibitem{hontani2012robust}
+Hidekata Hontani, Takamiti Matsuno, and Yoshihide Sawada.
+\newblock Robust nonrigid icp using outlier-sparsity regularization.
+\newblock In {\em IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR)}, pages 174--181. IEEE, 2012.
+
+\bibitem{jian2005robust}
+Bing Jian and Baba~C Vemuri.
+\newblock A robust algorithm for point set registration using mixture of
+  gaussians.
+\newblock In {\em IEEE International Conference on Computer Vision (ICCV)},
+  volume~2, pages 1246--1251. IEEE, 2005.
+
+\bibitem{jiang2019huber}
+Tao Jiang, Xiaosong Yang, Jianjun Zhang, Feng Tian, Shuang Liu, Nan Xiang, and
+  Kun Qian.
+\newblock Huber- l\({}_{\mbox{1}}\)-based non-isometric surface registration.
+\newblock {\em The Visual Computer}, 35(6-8):935--948, 2019.
+
+\bibitem{kimmel1998computing}
+Ron Kimmel and James~A Sethian.
+\newblock Computing geodesic paths on manifolds.
+\newblock {\em Proceedings of the national academy of Sciences},
+  95(15):8431--8435, 1998.
+
+\bibitem{Lange2004}
+Kenneth Lange.
+\newblock {\em Optimization}, chapter The MM Algorithm, pages 119--136.
+\newblock Springer New York, 2004.
+
+\bibitem{li2009robust}
+Hao Li, Bart Adams, Leonidas~J Guibas, and Mark Pauly.
+\newblock Robust single-view geometry and motion reconstruction.
+\newblock {\em ACM Transactions on Graphics (ToG)}, 28(5):175, 2009.
+
+\bibitem{li2008global}
+Hao Li, Robert~W Sumner, and Mark Pauly.
+\newblock Global correspondence optimization for non-rigid registration of
+  depth scans.
+\newblock {\em Computer Graphics Forum}, 27(5):1421--1430, 2008.
+
+\bibitem{li2018robust}
+Kun Li, Jingyu Yang, Yu-Kun Lai, and Daoliang Guo.
+\newblock Robust non-rigid registration with reweighted position and
+  transformation sparsity.
+\newblock {\em IEEE Transactions on Visualization and Computer Graphics},
+  25(6):2255--2269, 2018.
+
+\bibitem{liu2017quasi}
+Tiantian Liu, Sofien Bouaziz, and Ladislav Kavan.
+\newblock Quasi-newton methods for real-time simulation of hyperelastic
+  materials.
+\newblock {\em ACM Transactions on Graphics (TOG)}, 36(3):23, 2017.
+
+\bibitem{ma2015robust}
+Jiayi Ma, Weichao Qiu, Ji Zhao, Yong Ma, Alan~L. Yuille, and Zhuowen Tu.
+\newblock Robust {$L_2{E}$} estimation of transformation for non-rigid
+  registration.
+\newblock {\em {IEEE} Transactions on Signal Processing}, 63(5):1115--1129,
+  2015.
+
+\bibitem{Mitra2004}
+Niloy~J. Mitra, Natasha Gelfand, Helmut Pottmann, and Leonidas Guibas.
+\newblock Registration of point cloud data from a geometric optimization
+  perspective.
+\newblock In {\em Proceedings of the 2004 Eurographics/ACM SIGGRAPH Symposium
+  on Geometry Processing}, SGP '04, pages 22--31. ACM, 2004.
+
+\bibitem{moenning2003fast}
+Carsten Moenning and Neil~A Dodgson.
+\newblock Fast marching farthest point sampling.
+\newblock Technical report, University of Cambridge, Computer Laboratory, 2003.
+
+\bibitem{Nocedal2006}
+Jorge Nocedal and Stephen~J. Wright.
+\newblock {\em Numerical Optimization}.
+\newblock Springer, New York, 2nd edition, 2006.
+
+\bibitem{Rusinkiewicz2001}
+S. {Rusinkiewicz} and M. {Levoy}.
+\newblock Efficient variants of the icp algorithm.
+\newblock In {\em Proceedings Third International Conference on 3-D Digital
+  Imaging and Modeling}, pages 145--152, 2001.
+
+\bibitem{sumner2007embedded}
+Robert~W Sumner, Johannes Schmid, and Mark Pauly.
+\newblock Embedded deformation for shape manipulation.
+\newblock {\em ACM Transactions on Graphics (TOG)}, 26(3):80, 2007.
+
+\bibitem{tam2014diffusion}
+Gary~KL Tam, Ralph~Robert Martin, Paul~L Rosin, and Yukun Lai.
+\newblock Diffusion pruning for rapidly and robustly selecting global
+  correspondences using local isometry.
+\newblock {\em ACM Transactions on Graphics}, 33(1), 2014.
+
+\bibitem{TamCLLLMMSR13}
+Gary K.~L. Tam, Zhi{-}Quan Cheng, Yu{-}Kun Lai, Frank~C. Langbein, Yonghuai
+  Liu, A.~David Marshall, Ralph~R. Martin, Xianfang Sun, and Paul~L. Rosin.
+\newblock Registration of 3d point clouds and meshes: {A} survey from rigid to
+  nonrigid.
+\newblock {\em IEEE Transactions on Visualization and Computer Graphics},
+  19(7):1199--1217, 2013.
+
+\bibitem{tombari2010unique}
+Federico Tombari, Samuele Salti, and Luigi Di~Stefano.
+\newblock Unique signatures of histograms for local surface description.
+\newblock In {\em European conference on computer vision}, pages 356--369.
+  Springer, 2010.
+
+\bibitem{vlasic2008articulated}
+Daniel Vlasic, Ilya Baran, Wojciech Matusik, and Jovan Popovi{\'c}.
+\newblock Articulated mesh animation from multi-view silhouettes.
+\newblock In {\em ACM Transactions on Graphics (TOG)}, volume~27, page~97. ACM,
+  2008.
+
+\bibitem{Wand2009Efficient}
+Michael Wand, Bart Adams, Maksim Ovsjanikov, Alexander Berner, Martin Bokeloh,
+  Philipp Jenke, Leonidas Guibas, Hans~Peter Seidel, and Andreas Schilling.
+\newblock Efficient reconstruction of nonrigid shape and motion from real-time
+  3d scanner data.
+\newblock {\em ACM Transactions on Graphics (TOG)}, 28(2):1--15, 2009.
+
+\bibitem{wu2019global}
+Zhenchao Wu, Kun Li, Yu-Kun Lai, and Jingyu Yang.
+\newblock Global as-conformal-as-possible non-rigid registration of multi-view
+  scans.
+\newblock In {\em IEEE International Conference on Multimedia and Expo (ICME)},
+  pages 308--313. IEEE, 2019.
+
+\bibitem{yang2015sparse}
+Jingyu Yang, Ke Li, Kun Li, and Yu-Kun Lai.
+\newblock Sparse non-rigid registration of 3d shapes.
+\newblock {\em Computer Graphics Forum}, 34(5):89--99, 2015.
+
+\bibitem{zhang2018static}
+Juyong Zhang, Bailin Deng, Yang Hong, Yue Peng, Wenjie Qin, and Ligang Liu.
+\newblock Static/dynamic filtering for mesh geometry.
+\newblock {\em IEEE transactions on visualization and computer graphics},
+  25(4):1774--1787, 2018.
+
+\end{thebibliography}

@@ -1,0 +1,26 @@
+\section{Introduction}
+
+With the popularity of depth acquisition devices such as Kinect, PrimeSense and the depth sensors on smartphones, techniques for 3D object tracking and reconstruction from point clouds have enabled various applications. Non-rigid registration is a fundamental problem for such techniques, especially for the reconstruction of dynamic objects.
+Since depth maps obtained from structured light or time-of-flight cameras often contain outliers and holes, a robust non-rigid registration algorithm is needed to handle such data. Moreover, real-time applications require high computational efficiency for non-rigid registration.
+
+Given two point clouds sampled from a source surface and a target surface respectively,
+the aim of non-rigid registration is to find a transformation field for the source point cloud to align it with the target point cloud.
+This problem is typically solved via optimization.
+The objective energy often includes alignment terms that measure the deviation between the two point clouds after the transformation, as well as regularization terms that enforce smoothness of the transformation field.
+Existing methods often formulate these terms using the $\ell_2$-norm, which penalizes alignment and smoothness errors across the whole surface~\cite{amberg2007optimal,li2008global,li2009robust}. On the other hand, the ground-truth alignment can potentially induce large errors for these terms in some localized regions of the point clouds, due to noises, outliers, partial overlaps, or articulated motions between the point clouds. Such large localized errors will be inhibited by the $\ell_2$ formulations, which can lead to erroneous alignment results.
+To improve the alignment accuracy, recent works have utilized sparsity-promoting norms for these terms, such as the $\ell_1$-norm~\cite{yang2015sparse,li2018robust,jiang2019huber} and the $\ell_0$-norm~\cite{guo2015robust}.
+The sparsity optimization enforces small error metrics on most parts of the point cloud while allowing for large errors in some local regions, improving the robustness of the registration process.
+However, these sparsity terms can lead to non-smooth problems that are more challenging to solve.
+Existing methods often employ first-order solvers such as the alternating direction method of multipliers (ADMM), which can suffer from slow convergence to high-accuracy solutions~\cite{boyd2011distributed}.
+
+In this paper, we propose a new approach for robust non-rigid registration with fast convergence. The key idea is to enforce sparsity using the Welsch's function~\cite{holland1977robust}, which has been utilized for robust processing of images~\cite{ham2015robust} and meshes~\cite{zhang2018static}.
+We formulate an optimization that applies the Welsch's function to both the alignment error and the regularization, to achieve robust registration.
+Unlike the $\ell_p$-norms, the Welsch's function is smooth and does not induce non-smooth optimization.
+We solve the optimization problem using the majorization-minimization (MM) algorithm~\cite{Lange2004}. It iteratively constructs a surrogate function for the target energy based on the current variable values and minimizes the surrogate function to update the variables, and is guaranteed to converge to a local minimum.
+The Welsch's function enables us to derive a surrogate function in a simple least-squares form, which can be solved efficiently using L-BFGS. Experimental results verify the robustness of our method as well as its superior performance compared to existing robust registration approaches.
+
+In summary, the main contributions of this paper include:
+\begin{itemize}
+  \item We formulate an optimization problem for non-rigid registration, using the Welsch's function to induce sparsity for alignment error and transformation smoothness. The proposed formulation effectively improves the robustness and accuracy of the results.
+  \item We propose an MM algorithm to solve the optimization problem, using L-BFGS to tackle the sub-problems. The combination of MM and L-BFGS greatly improves the computational efficiency of robust non-rigid registration compared to existing approaches.
+\end{itemize} 

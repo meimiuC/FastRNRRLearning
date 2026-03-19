@@ -47,105 +47,108 @@ typedef Eigen::SparseMatrix<Scalar> SparseMatrix;
  * - Initialize()：初始化采样节点、权重矩阵、变换矩阵等
  * - DoNonRigid()：执行非刚性配准主循环（外层调整 nu + 内层 L-BFGS 优化）
  */
-class NonRigidreg : public Registration
-{
+class NonRigidreg : public Registration {
 public:
-	NonRigidreg();
-	~NonRigidreg();
+  NonRigidreg();
+  ~NonRigidreg();
 
-	/**
-	 * @brief 执行非刚性配准主流程
-	 * 外层循环：逐步减小 Welsch 函数参数 nu（graduated non-convexity）
-	 * 内层循环：对每个 nu 值，迭代更新对应关系和变换矩阵
-	 */
-	virtual Scalar DoNonRigid();
+  /**
+   * @brief 执行非刚性配准主流程
+   * 外层循环：逐步减小 Welsch 函数参数 nu（graduated non-convexity）
+   * 内层循环：对每个 nu 值，迭代更新对应关系和变换矩阵
+   */
+  virtual Scalar DoNonRigid();
 
-	/**
-	 * @brief 非刚性配准初始化
-	 * 采样控制节点、构建节点图、初始化所有矩阵和变量
-	 */
-	virtual void Initialize();
-
-private:
-	// ===== Welsch 鲁棒核函数相关 =====
-	/** @brief 计算 Welsch 鲁棒误差 */
-	Scalar welsch_error(Scalar nu1, Scalar nu2);
-	/** @brief 计算 Welsch 能量：E = sum(1 - exp(-r_i^2 / (2*p^2))) */
-	Scalar welsch_energy(VectorX& r, Scalar p);
-	/** @brief 计算 Welsch 权重：w_i = exp(-r_i^2 / (2*p^2)) */
-	void welsch_weight(VectorX& r, Scalar p);
-
-	// ===== L-BFGS 优化相关 =====
-	/**
-	 * @brief L-BFGS 两循环递归算法
-	 * 利用历史梯度差和步长信息近似 Hessian 逆矩阵，计算下降方向
-	 * @param iter 当前迭代次数
-	 * @param dir 输出的下降方向
-	 */
-	void LBFGS(int iter, MatrixXX & dir) const;
-
-	/**
-	 * @brief 拟牛顿求解器（L-BFGS + 线搜索）
-	 * 在固定 Welsch 权重下，使用 L-BFGS 方法求解最优变换矩阵
-	 * @return 实际执行的迭代次数
-	 */
-	int QNSolver(Scalar& data_err, Scalar& smooth_err, Scalar& orth_err);
-
-	// ===== 能量和梯度计算 =====
-	/** @brief 计算当前能量值（数据项 + 光滑项 + 正交项），同时通过 SVD 更新旋转矩阵 */
-	Scalar sample_energy(Scalar& data_err, Scalar& smooth_err, Scalar& orth_err);
-	/** @brief 计算能量函数的梯度 */
-	void   sample_gradient();
-	/** @brief 通过 SVD 分解从仿射变换中提取最近旋转矩阵 */
-	void   update_R();
-	/** @brief 将变换结果应用到网格顶点，并计算真值误差 */
-	Scalar SetMeshPoints(Mesh* mesh, const MatrixXX & target, MatrixXX& cur_v);
-
-	/** @brief Cholesky 分解求解器，用于求解线性方程组 A*x = b */
-	Eigen::SimplicialCholesky<SparseMatrix>* ldlt_;
+  /**
+   * @brief 非刚性配准初始化
+   * 采样控制节点、构建节点图、初始化所有矩阵和变量
+   */
+  virtual void Initialize();
 
 private:
-	// ===== L-BFGS 历史记录 =====
-	MatrixXX all_s_; // si = X_{i+1} - X_i；维度 (12r) × lbfgs_m，存储最近 m 步的步长差
-	MatrixXX all_t_; // ti = ∇E(X_{i+1}) - ∇E(X_i)；维度 (12r) × lbfgs_m，存储最近 m 步的梯度差
-	int iter_;       // 全局迭代计数器
-	int col_idx_;    // 环形缓冲区当前写入位置
+  // ===== Welsch 鲁棒核函数相关 =====
+  /** @brief 计算 Welsch 鲁棒误差 */
+  Scalar welsch_error(Scalar nu1, Scalar nu2);
+  /** @brief 计算 Welsch 能量：E = sum(1 - exp(-r_i^2 / (2*p^2))) */
+  Scalar welsch_energy(VectorX &r, Scalar p);
+  /** @brief 计算 Welsch 权重：w_i = exp(-r_i^2 / (2*p^2)) */
+  void welsch_weight(VectorX &r, Scalar p);
 
-	// ===== 采样节点相关 =====
-	int				num_sample_nodes;  // (r) 采样控制节点数量
-	svr::nodeSampler src_sample_nodes; // 采样节点管理器（负责采样、构建节点图、计算权重）
+  // ===== L-BFGS 优化相关 =====
+  /**
+   * @brief L-BFGS 两循环递归算法
+   * 利用历史梯度差和步长信息近似 Hessian 逆矩阵，计算下降方向
+   * @param iter 当前迭代次数
+   * @param dir 输出的下降方向
+   */
+  void LBFGS(int iter, MatrixXX &dir) const;
 
-	// ===== 变换变量 =====
-	MatrixXX		Smat_X_;	// (4r × 3) 所有控制节点的仿射变换矩阵
-								//   每个节点占4行：前3行是3×3线性变换，第4行是1×3平移
+  /**
+   * @brief 拟牛顿求解器（L-BFGS + 线搜索）
+   * 在固定 Welsch 权重下，使用 L-BFGS 方法求解最优变换矩阵
+   * @return 实际执行的迭代次数
+   */
+  int QNSolver(Scalar &data_err, Scalar &smooth_err, Scalar &orth_err);
 
-	// ===== 数据项矩阵 =====
-	//   E_data = ||Weight_PV_ * Smat_X_ + Smat_P_ - U||^2
-	SparseMatrix	Weight_PV_; // (n × 4r) 顶点-控制节点权重矩阵（稀疏）
-								//   将控制节点的变换插值到所有网格顶点
-	MatrixXX		Smat_P_;    // (n × 3) 权重加权的控制节点坐标和
+  // ===== 能量和梯度计算 =====
+  /** @brief 计算当前能量值（数据项 + 光滑项 + 正交项），同时通过 SVD
+   * 更新旋转矩阵 */
+  Scalar sample_energy(Scalar &data_err, Scalar &smooth_err, Scalar &orth_err);
+  /** @brief 计算能量函数的梯度 */
+  void sample_gradient();
+  /** @brief 通过 SVD 分解从仿射变换中提取最近旋转矩阵 */
+  void update_R();
+  /** @brief 将变换结果应用到网格顶点，并计算真值误差 */
+  Scalar SetMeshPoints(Mesh *mesh, const MatrixXX &target, MatrixXX &cur_v);
 
-	// ===== 光滑项矩阵 =====
-	//   E_smooth = α * ||Smat_B_ * Smat_X_ - Smat_D_||^2
-	SparseMatrix	Smat_B_;	// (2|e| × 4r) 节点间光滑约束矩阵
-								//   |e| 是控制节点图的边数
-	MatrixXX		Smat_D_;	// (2|e| × 3) 相邻控制节点间的坐标差
-	VectorX			Sweight_s_; // (2|e|) 光滑项权重（与节点间距离成反比）
+  /** @brief Cholesky 分解求解器，用于求解线性方程组 A*x = b */
+  Eigen::SimplicialCholesky<SparseMatrix> *ldlt_;
 
-	// ===== 正交项矩阵 =====
-	//   E_orth = β * ||L * Smat_X_ - J * Smat_R_||^2
-	MatrixXX		Smat_R_;	// (3r × 3) 每个控制节点的最近旋转矩阵
-	SparseMatrix	Smat_L_;	// (4r × 4r) 正交项系数矩阵（提取线性变换部分）
-	SparseMatrix	Smat_J_;	// (4r × 3r) 正交项辅助矩阵
-	MatrixXX		Smat_UP_;   // 辅助矩阵：加权后的目标位移
+private:
+  // ===== L-BFGS 历史记录 =====
+  MatrixXX
+      all_s_; // si = X_{i+1} - X_i；维度 (12r) × lbfgs_m，存储最近 m 步的步长差
+  MatrixXX all_t_; // ti = ∇E(X_{i+1}) - ∇E(X_i)；维度 (12r) × lbfgs_m，存储最近
+                   // m 步的梯度差
+  int iter_;       // 全局迭代计数器
+  int col_idx_;    // 环形缓冲区当前写入位置
 
-	// ===== 标记点项矩阵 =====
-	//   E_landmark = γ * ||Sub_PV_ * Smat_X_ - Sub_UP_||^2
-	SparseMatrix    Sub_PV_;    // (k × 4r) 标记点的权重子矩阵
-	MatrixXX        Sub_UP_;    // (k × 3) 标记点的目标位移
+  // ===== 采样节点相关 =====
+  int num_sample_nodes; // (r) 采样控制节点数量
+  svr::nodeSampler
+      src_sample_nodes; // 采样节点管理器（负责采样、构建节点图、计算权重）
 
-	// ===== 原始参数备份 =====
-	Scalar          ori_alpha;  // 原始 alpha 值（在动态调整 nu 时需要恢复）
-	Scalar          ori_beta;   // 原始 beta 值
+  // ===== 变换变量 =====
+  MatrixXX Smat_X_; // (4r × 3) 所有控制节点的仿射变换矩阵
+                    //   每个节点占4行：前3行是3×3线性变换，第4行是1×3平移
+
+  // ===== 数据项矩阵 =====
+  //   E_data = ||Weight_PV_ * Smat_X_ + Smat_P_ - U||^2
+  SparseMatrix Weight_PV_; // (n × 4r) 顶点-控制节点权重矩阵（稀疏）
+                           //   将控制节点的变换插值到所有网格顶点
+  MatrixXX Smat_P_;        // (n × 3) 权重加权的控制节点坐标和
+
+  // ===== 光滑项矩阵 =====
+  //   E_smooth = α * ||Smat_B_ * Smat_X_ - Smat_D_||^2
+  SparseMatrix Smat_B_; // (2|e| × 4r) 节点间光滑约束矩阵
+                        //   |e| 是控制节点图的边数
+  MatrixXX Smat_D_;     // (2|e| × 3) 相邻控制节点间的坐标差
+  VectorX Sweight_s_;   // (2|e|) 光滑项权重（与节点间距离成反比）
+
+  // ===== 正交项矩阵 =====
+  //   E_orth = β * ||L * Smat_X_ - J * Smat_R_||^2
+  MatrixXX Smat_R_;     // (3r × 3) 每个控制节点的最近旋转矩阵
+  SparseMatrix Smat_L_; // (4r × 4r) 正交项系数矩阵（提取线性变换部分）
+  SparseMatrix Smat_J_; // (4r × 3r) 正交项辅助矩阵
+  MatrixXX Smat_UP_;    // 辅助矩阵：加权后的目标位移
+
+  // ===== 标记点项矩阵 =====
+  //   E_landmark = γ * ||Sub_PV_ * Smat_X_ - Sub_UP_||^2
+  SparseMatrix Sub_PV_; // (k × 4r) 标记点的权重子矩阵
+  MatrixXX Sub_UP_;     // (k × 3) 标记点的目标位移
+
+  // ===== 原始参数备份 =====
+  Scalar ori_alpha; // 原始 alpha 值（在动态调整 nu 时需要恢复）
+  Scalar ori_beta;  // 原始 beta 值
 };
 #endif
