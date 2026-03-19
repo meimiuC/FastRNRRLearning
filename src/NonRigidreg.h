@@ -89,6 +89,9 @@ private:
    * @return 实际执行的迭代次数
    */
   int QNSolver(Scalar &data_err, Scalar &smooth_err, Scalar &orth_err);
+  MatrixXX AndersonStep(const MatrixXX &X_new, const MatrixXX &X_old);
+  MatrixXX DirectSolve();
+  void InitAndersonHistory();
 
   // ===== 能量和梯度计算 =====
   /** @brief 计算当前能量值（数据项 + 光滑项 + 正交项），同时通过 SVD
@@ -112,6 +115,11 @@ private:
                    // m 步的梯度差
   int iter_;       // 全局迭代计数器
   int col_idx_;    // 环形缓冲区当前写入位置
+  MatrixXX anderson_X_hist_;
+  MatrixXX anderson_g_hist_;
+  MatrixXX anderson_F_hist_;
+  int anderson_iter_;
+  int anderson_buf_idx_;
 
   // ===== 采样节点相关 =====
   int num_sample_nodes; // (r) 采样控制节点数量

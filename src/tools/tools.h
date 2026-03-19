@@ -53,6 +53,10 @@ struct RegParas
 	// ===== 优化方法选项 =====
 	bool	use_lbfgs;          // 是否使用 L-BFGS 加速（true=更快收敛）
 	int		lbfgs_m;            // L-BFGS 历史记录步数（通常 3~10）
+	bool    use_anderson;      // 是否启用 Anderson 加速外层迭代
+	int     anderson_m;        // Anderson 历史窗口大小
+	bool    anderson_safeguard;// 是否启用 Anderson 安全回退
+	double  anderson_safeguard_ratio; // Anderson 外推偏差阈值
 
 	// ===== 对应点剪枝参数 =====
 	bool	use_normal_reject;  // 是否使用法向量夹角剪枝
@@ -109,12 +113,16 @@ struct RegParas
 	RegParas()
 	{
 		max_outer_iters = 100;
-		max_inner_iters = 20;
+		max_inner_iters = 1;
 		alpha = 100.0;
 		beta = 100.0;
 		gamma = 1e6;
-		use_lbfgs = true;
+		use_lbfgs = false;
 		lbfgs_m = 5;
+		use_anderson = true;
+		anderson_m = 5;
+		anderson_safeguard = false;
+		anderson_safeguard_ratio = 10.0;
 		use_normal_reject = false;
 		use_distance_reject = false;
 		normal_threshold = M_PI / 3;

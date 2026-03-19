@@ -191,6 +191,13 @@ void NonRigidreg::Initialize()
     // 使得不同规模的网格使用相同的参数时能获得相似的效果
     pars_.alpha = pars_.alpha * Smat_B_.rows()/ n_src_vertex_;  // 光滑项权重归一化
     pars_.beta = pars_.beta *  num_sample_nodes / n_src_vertex_; // 正交项权重归一化
+
+    anderson_iter_ = 0;
+    anderson_buf_idx_ = 0;
+    if(pars_.use_anderson)
+    {
+        InitAndersonHistory();
+    }
 }
 
 /**
@@ -353,7 +360,39 @@ Scalar NonRigidreg::DoNonRigid()
             ldlt_->factorize(mat_A0_);
 
             // ----- 步骤 5：求解最优变换矩阵 -----
-            if(!pars_.use_lbfgs)
+            if(pars_.use_anderson)
+            {
+                MatrixXX X_old = Smat_X_;
+                MatrixXX X_new = DirectSolve();
+                MatrixXX X_anderson = (anderson_iter_ == 0) ? X_new : AndersonStep(X_new, X_old);
+                if(!X_anderson.allFinite())
+                {
+                    X_anderson = X_new;
+                }
+
+                if(pars_.anderson_safeguard)
+                {
+                    double diff = (X_anderson - X_new).norm();
+                    double scale = X_new.norm() + 1e-12;
+                    if(diff > pars_.anderson_safeguard_ratio * scale)
+                    {
+                        X_anderson = X_new;
+                    }
+                }
+
+                int flat_size = 4 * num_sample_nodes * 3;
+                int buf_pos = anderson_buf_idx_ % (pars_.anderson_m + 1);
+                anderson_X_hist_.col(buf_pos) = Eigen::Map<VectorX>(X_old.data(), flat_size);
+                anderson_g_hist_.col(buf_pos) = Eigen::Map<VectorX>(X_new.data(), flat_size);
+                anderson_F_hist_.col(buf_pos) = Eigen::Map<VectorX>(X_new.data(), flat_size)
+                                              - Eigen::Map<VectorX>(X_old.data(), flat_size);
+                anderson_buf_idx_++;
+                anderson_iter_++;
+
+                Smat_X_ = X_anderson;
+                total_inner_iters = 1;
+            }
+            else if(!pars_.use_lbfgs)
             {
                 // 直接求解：A0 * X = beta * J * R + VU
                 MatrixXX b = pars_.beta * Smat_J_ * Smat_R_ + mat_VU_;
@@ -362,7 +401,7 @@ Scalar NonRigidreg::DoNonRigid()
                 {
                     Smat_X_.col(col_id) = ldlt_->solve(b.col(col_id));
                 }
-                total_inner_iters += 1;
+                total_inner_iters = 1;
             }
             else
             {
@@ -420,8 +459,76 @@ Scalar NonRigidreg::DoNonRigid()
         // 根据新的 nu 重新计算 alpha 和 beta
         pars_.alpha = ori_alpha * nu1 * nu1 / (nu2 * nu2);
         pars_.beta = ori_beta * 2 * nu1 * nu1;
+        if(pars_.use_anderson)
+        {
+            anderson_iter_ = 0;
+            anderson_buf_idx_ = 0;
+            InitAndersonHistory();
+        }
     }
     return 0;
+}
+
+void NonRigidreg::InitAndersonHistory()
+{
+    int flat_size = 4 * num_sample_nodes * 3;
+    int buf_size = pars_.anderson_m + 1;
+    anderson_X_hist_.resize(flat_size, buf_size);
+    anderson_g_hist_.resize(flat_size, buf_size);
+    anderson_F_hist_.resize(flat_size, buf_size);
+    anderson_X_hist_.setZero();
+    anderson_g_hist_.setZero();
+    anderson_F_hist_.setZero();
+}
+
+MatrixXX NonRigidreg::DirectSolve()
+{
+    MatrixXX b = pars_.beta * Smat_J_ * Smat_R_ + mat_VU_;
+    MatrixXX X_new(4 * num_sample_nodes, 3);
+#pragma omp parallel for
+    for (int col_id = 0; col_id < 3; col_id++)
+    {
+        X_new.col(col_id) = ldlt_->solve(b.col(col_id));
+    }
+    return X_new;
+}
+
+MatrixXX NonRigidreg::AndersonStep(const MatrixXX &X_new, const MatrixXX &X_old)
+{
+    int flat_size = 4 * num_sample_nodes * 3;
+    int m = pars_.anderson_m;
+    int m_k = std::min(std::max(anderson_iter_ - 1, 0), m);
+    if(m_k <= 0)
+    {
+        return X_new;
+    }
+
+    VectorX g_cur = Eigen::Map<const VectorX>(X_new.data(), flat_size);
+    VectorX x_cur = Eigen::Map<const VectorX>(X_old.data(), flat_size);
+    VectorX f_cur = g_cur - x_cur;
+    MatrixXX delta_f(flat_size, m_k);
+    MatrixXX delta_g(flat_size, m_k);
+
+    for(int i = 0; i < m_k; i++)
+    {
+        int idx_cur = (anderson_buf_idx_ - 1 - i + (m + 1) * 2) % (m + 1);
+        int idx_pre = (anderson_buf_idx_ - 2 - i + (m + 1) * 2) % (m + 1);
+        delta_f.col(i) = anderson_F_hist_.col(idx_cur) - anderson_F_hist_.col(idx_pre);
+        delta_g.col(i) = anderson_g_hist_.col(idx_cur) - anderson_g_hist_.col(idx_pre);
+    }
+
+    VectorX coeff = delta_f.colPivHouseholderQr().solve(f_cur);
+    if(!coeff.allFinite())
+    {
+        return X_new;
+    }
+    VectorX x_aa = g_cur - delta_g * coeff;
+    if(!x_aa.allFinite())
+    {
+        return X_new;
+    }
+    MatrixXX X_aa = Eigen::Map<MatrixXX>(x_aa.data(), 4 * num_sample_nodes, 3);
+    return X_aa;
 }
 
 /**
