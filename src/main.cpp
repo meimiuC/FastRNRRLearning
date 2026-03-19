@@ -27,6 +27,7 @@
 #include "NonRigidreg.h"
 #include "tools/OmpHelper.h"
 #include "tools/io_mesh.h"
+#include <cstdlib>
 
 int main(int argc, char **argv) {
   // =============================================
@@ -78,12 +79,34 @@ int main(int argc, char **argv) {
   paras.normal_threshold = M_PI / 3; // 法向量夹角阈值（60度）
   paras.use_Dynamic_nu =
       true; // 启用动态 nu 参数（Welsch 函数的鲁棒性参数逐步缩小）
+  paras.use_adaptive_gnc = true;
+  paras.use_fixed_gnc_fallback = true;
+  paras.gnc_grad_tol = 5e-4;
+  paras.gnc_hdiag_pos_eps = 1e-10;
+  paras.gnc_decay_fast = 0.35;
+  paras.gnc_decay_slow = 0.65;
+  paras.gnc_min_outer_iters_per_stage = 2;
+  paras.gnc_patience_before_forced_decay = 2;
   paras.use_anderson = true;
   paras.anderson_m = 5;
   paras.use_lbfgs = false;
   paras.max_inner_iters = 1;
   paras.anderson_safeguard = false;
   paras.anderson_safeguard_ratio = 10.0;
+  if (const char *gnc_mode = std::getenv("FASTRNRR_GNC_MODE")) {
+    std::string mode = gnc_mode;
+    if (mode == "fixed") {
+      paras.use_adaptive_gnc = false;
+      std::cout << "[GNC] mode=fixed" << std::endl;
+    } else if (mode == "adaptive") {
+      paras.use_adaptive_gnc = true;
+      std::cout << "[GNC] mode=adaptive" << std::endl;
+    } else {
+      std::cout << "[GNC] unknown FASTRNRR_GNC_MODE='" << mode
+                << "', fallback to adaptive." << std::endl;
+      paras.use_adaptive_gnc = true;
+    }
+  }
 
   // 设置输出文件路径
   paras.out_gt_file = outpath + "_res.txt"; // 真实误差输出文件

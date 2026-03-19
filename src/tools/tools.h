@@ -81,11 +81,19 @@ struct RegParas
 
 	// ===== Welsch 鲁棒函数动态参数 =====
 	bool    use_Dynamic_nu;   // 是否使用动态 nu（GNC 策略，逐步减小 nu）
+	bool    use_adaptive_gnc; // 是否使用自适应 GNC 调度
+	bool    use_fixed_gnc_fallback; // 自适应 GNC 长时间停滞时是否回退到固定衰减
 	Scalar  Data_nu;          // 数据项 Welsch 参数 nu 的基准值（初始对应点距离的中位数）
 	Scalar  Smooth_nu;        // 光滑项 Welsch 参数的倍率
 	Scalar  Data_initk;       // 数据项 nu 初始放大倍数（nu1_init = Data_initk × Data_nu）
 	Scalar  Data_endk;        // 数据项 nu 终止比率（end_nu1 = Data_endk × 平均边长）
 	Scalar  stop;             // 收敛阈值（顶点位移或能量变化小于此值则停止）
+	Scalar  gnc_grad_tol;     // 自适应 GNC 的梯度收敛阈值
+	Scalar  gnc_hdiag_pos_eps;// Hessian 对角代理的正定阈值
+	Scalar  gnc_decay_fast;   // 自适应快速衰减率
+	Scalar  gnc_decay_slow;   // 自适应保守衰减率
+	int     gnc_min_outer_iters_per_stage;      // 每个 nu 阶段最少外层迭代次数
+	int     gnc_patience_before_forced_decay;   // 触发回退衰减前允许连续停滞的阶段数
 
 	// ===== 采样参数 =====
 	Scalar  uni_sample_radio;       // 均匀采样半径比率：采样半径 = 平均边长 × 此值
@@ -103,6 +111,13 @@ struct RegParas
 	std::vector<Scalar> each_energys;        // 每步的总能量
 	std::vector<Scalar> each_iters;          // 每步的内层迭代次数
 	std::vector<Vector3> each_term_energy;   // 每步的分项能量 (data, smooth, orth)
+	std::vector<Scalar> gnc_nu1_hist;        // 每个 GNC 阶段结束后的 nu1
+	std::vector<Scalar> gnc_nu2_hist;        // 每个 GNC 阶段结束后的 nu2
+	std::vector<Scalar> gnc_grad_norm_hist;  // 每个 GNC 阶段的梯度范数代理
+	std::vector<Scalar> gnc_hdiag_min_hist;  // 每个 GNC 阶段的 Hessian 对角最小值代理
+	std::vector<int> gnc_stage_policy;       // 每个 GNC 阶段采用的策略编码
+	std::vector<int> gnc_stage_outer_iters;  // 每个 GNC 阶段的外层迭代次数
+	std::vector<Scalar> gnc_stage_energy;    // 每个 GNC 阶段结束时的鲁棒能量
 	Scalar  non_rigid_init_time;             // 非刚性初始化耗时
 	Scalar  init_gt_mean_errs;               // 初始平均真值误差
 	Scalar  init_gt_max_errs;                // 初始最大真值误差
@@ -135,11 +150,19 @@ struct RegParas
 		smooth_use_welsch = true;
 
 		use_Dynamic_nu = true;
+		use_adaptive_gnc = true;
+		use_fixed_gnc_fallback = true;
 		Data_nu = 0.0;
 		Smooth_nu = 40;
 		Data_initk =10;
 		Data_endk = 0.5;
 		stop = 1e-3;
+		gnc_grad_tol = 5e-4;
+		gnc_hdiag_pos_eps = 1e-10;
+		gnc_decay_fast = 0.35;
+		gnc_decay_slow = 0.65;
+		gnc_min_outer_iters_per_stage = 2;
+		gnc_patience_before_forced_decay = 2;
 
 		uni_sample_radio = 5;
 		print_each_step_info = false;

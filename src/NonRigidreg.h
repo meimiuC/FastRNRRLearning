@@ -92,6 +92,9 @@ private:
   MatrixXX AndersonStep(const MatrixXX &X_new, const MatrixXX &X_old);
   MatrixXX DirectSolve();
   void InitAndersonHistory();
+  Scalar ComputeGradientNormProxy();
+  Scalar ComputeHessianDiagMinProxy() const;
+  void UpdateNuCoupledWeights(Scalar nu1, Scalar nu2);
 
   // ===== 能量和梯度计算 =====
   /** @brief 计算当前能量值（数据项 + 光滑项 + 正交项），同时通过 SVD
@@ -120,6 +123,7 @@ private:
   MatrixXX anderson_F_hist_;
   int anderson_iter_;
   int anderson_buf_idx_;
+  int gnc_patience_counter_;
 
   // ===== 采样节点相关 =====
   int num_sample_nodes; // (r) 采样控制节点数量

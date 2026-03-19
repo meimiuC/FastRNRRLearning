@@ -32,10 +32,15 @@
 
 #pragma once
 #include "NonRigidreg.h"
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <limits>
 
 typedef Eigen::Triplet<Scalar> Triplet;  // 稀疏矩阵三元组 (行, 列, 值)
 
 NonRigidreg::NonRigidreg() {
+    gnc_patience_counter_ = 0;
 };
 
 NonRigidreg::~NonRigidreg()
@@ -194,10 +199,38 @@ void NonRigidreg::Initialize()
 
     anderson_iter_ = 0;
     anderson_buf_idx_ = 0;
+    gnc_patience_counter_ = 0;
     if(pars_.use_anderson)
     {
         InitAndersonHistory();
     }
+}
+
+void NonRigidreg::UpdateNuCoupledWeights(Scalar nu1, Scalar nu2)
+{
+    const Scalar safe_nu2 = std::max<Scalar>(nu2, 1e-12);
+    pars_.alpha = ori_alpha * nu1 * nu1 / (safe_nu2 * safe_nu2);
+    pars_.beta = ori_beta * 2.0 * nu1 * nu1;
+}
+
+Scalar NonRigidreg::ComputeGradientNormProxy()
+{
+    sample_gradient();
+    return grad_X_.norm();
+}
+
+Scalar NonRigidreg::ComputeHessianDiagMinProxy() const
+{
+    if(mat_A0_.rows() == 0)
+    {
+        return 0.0;
+    }
+    VectorX diag = mat_A0_.diagonal();
+    if(diag.size() == 0)
+    {
+        return 0.0;
+    }
+    return diag.minCoeff();
 }
 
 /**
@@ -218,31 +251,33 @@ void NonRigidreg::Initialize()
  */
 Scalar NonRigidreg::DoNonRigid()
 {
-    Scalar data_err, smooth_err, orth_err;
+    Scalar data_err = 0.0, smooth_err = 0.0, orth_err = 0.0;
 
-    // 当前和前一次迭代的顶点位置，用于判断收敛
-    MatrixXX curV =  MatrixXX::Zero(n_src_vertex_, 3);
+    MatrixXX curV = MatrixXX::Zero(n_src_vertex_, 3);
     MatrixXX prevV = MatrixXX::Zero(n_src_vertex_, 3);
 
-    // 保存原始矩阵，因为每次迭代会对它们重新加权
-    SparseMatrix Weight_PV0 = Weight_PV_;  // 原始数据项权重矩阵
-    SparseMatrix Smat_B0 = Smat_B_;        // 原始光滑项矩阵
-    MatrixXX	 Smat_D0 = Smat_D_;          // 原始光滑项坐标差
-    // Welsch 光滑权重
+    SparseMatrix Weight_PV0 = Weight_PV_;
+    SparseMatrix Smat_B0 = Smat_B_;
+    MatrixXX Smat_D0 = Smat_D_;
     VectorX welsch_weight_s = VectorX::Ones(Sweight_s_.rows(), 1);
-    bool run_once = true;  // Cholesky 符号分析只需做一次
+    bool run_once = true;
 
     Timer time;
     Timer::EventID begin_time, run_time;
-    // 清空每步统计信息
     pars_.each_energys.clear();
     pars_.each_gt_mean_errs.clear();
     pars_.each_gt_max_errs.clear();
     pars_.each_times.clear();
     pars_.each_iters.clear();
     pars_.each_term_energy.clear();
+    pars_.gnc_nu1_hist.clear();
+    pars_.gnc_nu2_hist.clear();
+    pars_.gnc_grad_norm_hist.clear();
+    pars_.gnc_hdiag_min_hist.clear();
+    pars_.gnc_stage_policy.clear();
+    pars_.gnc_stage_outer_iters.clear();
+    pars_.gnc_stage_energy.clear();
 
-    // 记录初始状态的统计信息
     pars_.each_energys.push_back(0.0);
     pars_.each_gt_max_errs.push_back(pars_.init_gt_max_errs);
     pars_.each_gt_mean_errs.push_back(pars_.init_gt_mean_errs);
@@ -250,116 +285,103 @@ Scalar NonRigidreg::DoNonRigid()
     pars_.each_times.push_back(pars_.non_rigid_init_time);
     pars_.each_term_energy.push_back(Vector3(0,0,0));
 
-    // ===========================================================
-    // 初始化 Welsch 参数
-    // ===========================================================
-    // nu1：数据项的 Welsch 参数，初始值 = Data_initk × Data_nu
-    //   Data_nu 是初始对应点距离的中位数，Data_initk 是放大倍数
-    Scalar nu1 = pars_.Data_initk * pars_.Data_nu;
-    // 计算网格平均边长，用于设置 nu 的终止值
-    Scalar average_len = CalcEdgelength(src_mesh_, 1);
-    // end_nu1：nu1 的终止值 = Data_endk × 平均边长
-    Scalar end_nu1 = pars_.Data_endk * average_len;
-    // nu2：光滑项的 Welsch 参数
-    Scalar nu2 = pars_.Smooth_nu * average_len;
+    Scalar average_len = std::max<Scalar>(CalcEdgelength(src_mesh_, 1), 1e-8);
+    Scalar base_nu = std::max<Scalar>(pars_.Data_nu, average_len * 1e-4);
+    Scalar nu1 = std::max<Scalar>(pars_.Data_initk * base_nu, 1e-8);
+    Scalar end_nu1 = std::max<Scalar>(pars_.Data_endk * average_len, 1e-8);
+    Scalar nu2 = std::max<Scalar>(pars_.Smooth_nu * average_len, 1e-8);
 
-    // 根据当前 nu 值调整光滑项和正交项权重
-    // 当 nu1 减小时，alpha 和 beta 也相应调整
     ori_alpha = pars_.alpha;
     ori_beta = pars_.beta;
-    pars_.alpha = ori_alpha * nu1 * nu1 / (nu2 * nu2);
-    pars_.beta = ori_beta * 2.0 * nu1 * nu1;
+    UpdateNuCoupledWeights(nu1, nu2);
 
-    Scalar gt_err;
-
-    bool dynamic_stop = false;   // 外层循环停止标志
-    int accumulate_iter = 0;      // 累计迭代次数
+    Scalar gt_err = -1.0;
+    bool dynamic_stop = false;
+    int accumulate_iter = 0;
+    int stage_id = 0;
+    const int max_stage_count = std::max(20, pars_.max_outer_iters * 10);
 
     begin_time = time.get_time();
 
-    // ===========================================================
-    // 外层循环：Graduated Non-Convexity，逐步减小 nu
-    // ===========================================================
-    while (!dynamic_stop)
     {
-        // 内层循环：在固定 nu 下迭代优化
+        std::ofstream stage_log(pars_.out_gt_file.c_str(), std::ios::out | std::ios::trunc);
+        if(stage_log.is_open())
+        {
+            stage_log << "#stage policy nu1 nu2 grad_norm hdiag_min outer_iters robust_energy\n";
+        }
+    }
+
+    while (!dynamic_stop && stage_id < max_stage_count)
+    {
+        int stage_outer_iters = 0;
+        bool stage_converged = false;
+        Scalar stage_disp = std::numeric_limits<Scalar>::infinity();
+        Scalar stage_robust_energy = 0.0;
+
         for(int out_iter = 0; out_iter < pars_.max_outer_iters; out_iter++)
         {
-            // ----- 步骤 1：根据对应点对更新目标位置矩阵 mat_U0_ -----
+            stage_outer_iters = out_iter + 1;
+
             mat_U0_.setZero();
             corres_pair_ids_.setZero();
 #pragma omp parallel for
             for (size_t i = 0; i < correspondence_pairs_.size(); i++)
             {
-                // 将对应点的目标位置存入 mat_U0_（3×n 矩阵，每列一个目标点）
                 mat_U0_.col(correspondence_pairs_[i].src_idx) = correspondence_pairs_[i].position;
-                corres_pair_ids_[correspondence_pairs_[i].src_idx] = 1;  // 标记该顶点有对应
+                corres_pair_ids_[correspondence_pairs_[i].src_idx] = 1;
             }
 
-            // ----- 步骤 2：计算 Welsch 权重 -----
-            // 数据项 Welsch 权重：w_i = exp(-||PV*X + P - U_i||^2 / (2*nu1^2))
             if(pars_.data_use_welsch)
             {
-                // 计算每个顶点的变形后位置与对应目标点的距离
                 weight_d_ = (Weight_PV0 * Smat_X_ + Smat_P_ - mat_U0_.transpose()).rowwise().norm();
-                // 将距离转换为 Welsch 权重
                 welsch_weight(weight_d_, nu1);
             }
             else
-                weight_d_.setOnes();  // 不使用 Welsch 时权重全为 1（等价于 L2 范数）
+            {
+                weight_d_.setOnes();
+            }
 
-            // 光滑项 Welsch 权重
             if(pars_.smooth_use_welsch)
             {
-                welsch_weight_s = ((Smat_B0 * Smat_X_ - Smat_D0)).rowwise().norm();
+                welsch_weight_s = (Smat_B0 * Smat_X_ - Smat_D0).rowwise().norm();
                 welsch_weight(welsch_weight_s, nu2);
             }
             else
+            {
                 welsch_weight_s.setOnes();
+            }
 
             int total_inner_iters = 0;
-            MatrixXX old_X = Smat_X_;  // 保存当前变换矩阵
 
-            // ----- 步骤 3：更新加权矩阵 -----
-            // 将 Welsch 权重平方根与对应标记相乘，然后应用到原始矩阵
             weight_d_ = weight_d_.cwiseSqrt().cwiseProduct(corres_pair_ids_);
-            Weight_PV_ = weight_d_.asDiagonal() * Weight_PV0;  // 加权数据项矩阵
+            Weight_PV_ = weight_d_.asDiagonal() * Weight_PV0;
             welsch_weight_s = welsch_weight_s.cwiseSqrt().cwiseProduct(Sweight_s_);
-            Smat_B_ = welsch_weight_s.asDiagonal() * Smat_B0;  // 加权光滑项矩阵
+            Smat_B_ = welsch_weight_s.asDiagonal() * Smat_B0;
 
-            // 通过 SVD 从当前仿射变换中提取最近旋转矩阵
             update_R();
 
-            // 更新加权光滑项坐标差和数据项目标位移
             Smat_D_ = welsch_weight_s.asDiagonal() * Smat_D0;
             Smat_UP_ = weight_d_.asDiagonal() * (mat_U0_.transpose() - Smat_P_);
 
-            // ----- 步骤 4：构建线性方程组并预分解 -----
-            // mat_A0_ = PV^T*PV + alpha*B^T*B + beta*L (Hessian 近似)
             mat_A0_ = Weight_PV_.transpose() * Weight_PV_
                     + pars_.alpha * Smat_B_.transpose() * Smat_B_
                     + pars_.beta * Smat_L_;
-            // mat_VU_ = PV^T * UP + alpha * B^T * D (右端向量)
-            mat_VU_ = (Weight_PV_).transpose() * Smat_UP_
-                    + pars_.alpha * (Smat_B_).transpose() * Smat_D_;
+            mat_VU_ = Weight_PV_.transpose() * Smat_UP_
+                    + pars_.alpha * Smat_B_.transpose() * Smat_D_;
 
-            // 如果有标记点，加入标记点约束
             if(pars_.use_landmark)
             {
                 mat_A0_ += pars_.gamma * Sub_PV_.transpose() * Sub_PV_;
                 mat_VU_ += pars_.gamma * Sub_PV_.transpose() * Sub_UP_;
             }
 
-            // Cholesky 符号分析只需做一次（矩阵稀疏模式不变）
             if(run_once)
             {
                 ldlt_->analyzePattern(mat_A0_);
                 run_once = false;
             }
-            // Cholesky 数值分解（每次迭代都需要重新分解）
             ldlt_->factorize(mat_A0_);
 
-            // ----- 步骤 5：求解最优变换矩阵 -----
             if(pars_.use_anderson)
             {
                 MatrixXX X_old = Smat_X_;
@@ -394,7 +416,6 @@ Scalar NonRigidreg::DoNonRigid()
             }
             else if(!pars_.use_lbfgs)
             {
-                // 直接求解：A0 * X = beta * J * R + VU
                 MatrixXX b = pars_.beta * Smat_J_ * Smat_R_ + mat_VU_;
 #pragma omp parallel for
                 for (int col_id = 0; col_id < 3; col_id++)
@@ -405,66 +426,145 @@ Scalar NonRigidreg::DoNonRigid()
             }
             else
             {
-                // 使用 L-BFGS 拟牛顿法求解（更快收敛）
                 total_inner_iters += QNSolver(data_err, smooth_err, orth_err);
             }
 
-            // ----- 步骤 6：更新网格顶点位置 -----
-            // 变形后的顶点位置 = Weight_PV0 * X + P
             MatrixXX target = Weight_PV0 * Smat_X_ + Smat_P_;
             gt_err = SetMeshPoints(src_mesh_, target, curV);
             run_time = time.get_time();
 
-            // 记录本步统计信息
+            sample_energy(data_err, smooth_err, orth_err);
+            stage_robust_energy = welsch_error(nu1, nu2);
+
             pars_.each_gt_mean_errs.push_back(gt_err);
             pars_.each_gt_max_errs.push_back(0);
-            pars_.each_energys.push_back(0.0);
+            pars_.each_energys.push_back(stage_robust_energy);
             double eps_time = time.elapsed_time(begin_time, run_time);
             pars_.each_times.push_back(eps_time);
             pars_.each_iters.push_back(total_inner_iters);
             pars_.each_term_energy.push_back(Vector3(data_err, smooth_err, orth_err));
 
-            // 调试输出：保存每步的中间结果
             if(pars_.print_each_step_info)
             {
                 std::string out_obj = pars_.out_each_step_info + "/iter_obj_" + std::to_string(accumulate_iter) + ".ply";
-                OpenMesh::IO::write_mesh( *src_mesh_, out_obj.c_str() );
+                OpenMesh::IO::write_mesh(*src_mesh_, out_obj.c_str());
                 std::cout << "iter = " << out_iter << " time = " << eps_time
                           << "  inner iter = " << total_inner_iters << std::endl;
             }
 
-            // ----- 步骤 7：重新查找对应点并剪枝 -----
             FindClosestPoints(correspondence_pairs_);
             accumulate_iter++;
             SimplePruning(correspondence_pairs_, pars_.use_distance_reject, pars_.use_normal_reject);
 
-            // ----- 步骤 8：收敛判断 -----
-            // 如果顶点位置变化的最大值小于阈值，认为已收敛
-            if((curV - prevV).rowwise().norm().maxCoeff() < pars_.stop)
+            stage_disp = (curV - prevV).rowwise().norm().maxCoeff();
+            if(stage_disp < pars_.stop &&
+               stage_outer_iters >= std::max(1, pars_.gnc_min_outer_iters_per_stage))
             {
+                stage_converged = true;
+                prevV = curV;
                 break;
             }
             prevV = curV;
         }
 
-        // ===========================================================
-        // 外层循环：更新 nu 参数
-        // ===========================================================
-        // 如果 nu1 已达到终止值，或不使用动态 nu，则停止
-        if(fabs(nu1-end_nu1)<1e-8 || !pars_.use_Dynamic_nu || !pars_.data_use_welsch)
-            dynamic_stop = true;
-        // nu1 减半，但不小于终止值
-        nu1 = (0.5*nu1> end_nu1)?0.5*nu1:end_nu1;
-        nu2 *= 0.5;  // nu2 也减半
-        // 根据新的 nu 重新计算 alpha 和 beta
-        pars_.alpha = ori_alpha * nu1 * nu1 / (nu2 * nu2);
-        pars_.beta = ori_beta * 2 * nu1 * nu1;
-        if(pars_.use_anderson)
+        Scalar grad_norm = std::numeric_limits<Scalar>::infinity();
+        Scalar hdiag_min = -std::numeric_limits<Scalar>::infinity();
+        if(stage_outer_iters > 0)
         {
-            anderson_iter_ = 0;
-            anderson_buf_idx_ = 0;
-            InitAndersonHistory();
+            grad_norm = ComputeGradientNormProxy();
+            hdiag_min = ComputeHessianDiagMinProxy();
         }
+
+        int policy_code = 0;
+        bool stop_now = !pars_.use_Dynamic_nu || !pars_.data_use_welsch || std::fabs(nu1 - end_nu1) < 1e-8;
+        if(stop_now)
+        {
+            policy_code = 4;
+            dynamic_stop = true;
+        }
+        else
+        {
+            Scalar next_nu1 = nu1;
+            Scalar next_nu2 = nu2;
+            bool nu_changed = false;
+
+            if(pars_.use_adaptive_gnc)
+            {
+                bool grad_converged = grad_norm < pars_.gnc_grad_tol;
+                bool can_shrink = stage_converged && grad_converged &&
+                                  stage_outer_iters >= std::max(1, pars_.gnc_min_outer_iters_per_stage);
+                if(can_shrink)
+                {
+                    gnc_patience_counter_ = 0;
+                    Scalar decay = (hdiag_min > pars_.gnc_hdiag_pos_eps) ? pars_.gnc_decay_fast : pars_.gnc_decay_slow;
+                    decay = std::min<Scalar>(std::max<Scalar>(decay, 0.05), 0.95);
+                    next_nu1 = std::max(end_nu1, nu1 * decay);
+                    next_nu2 = std::max<Scalar>(1e-12, nu2 * decay);
+                    policy_code = (hdiag_min > pars_.gnc_hdiag_pos_eps) ? 1 : 2;
+                    nu_changed = std::fabs(next_nu1 - nu1) > 1e-12;
+                }
+                else
+                {
+                    gnc_patience_counter_++;
+                    if(pars_.use_fixed_gnc_fallback &&
+                       gnc_patience_counter_ > std::max(0, pars_.gnc_patience_before_forced_decay))
+                    {
+                        next_nu1 = std::max(end_nu1, nu1 * Scalar(0.5));
+                        next_nu2 = std::max<Scalar>(1e-12, nu2 * Scalar(0.5));
+                        policy_code = 3;
+                        nu_changed = std::fabs(next_nu1 - nu1) > 1e-12;
+                        gnc_patience_counter_ = 0;
+                    }
+                    else
+                    {
+                        policy_code = 0;
+                    }
+                }
+            }
+            else
+            {
+                next_nu1 = std::max(end_nu1, nu1 * Scalar(0.5));
+                next_nu2 = std::max<Scalar>(1e-12, nu2 * Scalar(0.5));
+                policy_code = 5;
+                nu_changed = std::fabs(next_nu1 - nu1) > 1e-12;
+            }
+
+            if(nu_changed)
+            {
+                nu1 = next_nu1;
+                nu2 = next_nu2;
+                UpdateNuCoupledWeights(nu1, nu2);
+                if(pars_.use_anderson)
+                {
+                    anderson_iter_ = 0;
+                    anderson_buf_idx_ = 0;
+                    InitAndersonHistory();
+                }
+            }
+        }
+
+        pars_.gnc_nu1_hist.push_back(nu1);
+        pars_.gnc_nu2_hist.push_back(nu2);
+        pars_.gnc_grad_norm_hist.push_back(grad_norm);
+        pars_.gnc_hdiag_min_hist.push_back(hdiag_min);
+        pars_.gnc_stage_policy.push_back(policy_code);
+        pars_.gnc_stage_outer_iters.push_back(stage_outer_iters);
+        pars_.gnc_stage_energy.push_back(stage_robust_energy);
+        {
+            std::ofstream stage_log(pars_.out_gt_file.c_str(), std::ios::app);
+            if(stage_log.is_open())
+            {
+                stage_log << stage_id << " " << policy_code << " " << nu1 << " " << nu2
+                          << " " << grad_norm << " " << hdiag_min << " "
+                          << stage_outer_iters << " " << stage_robust_energy << "\n";
+            }
+        }
+        stage_id++;
+    }
+
+    if(stage_id >= max_stage_count)
+    {
+        std::cout << "Warning: adaptive GNC reached max stage count and stopped." << std::endl;
     }
     return 0;
 }
