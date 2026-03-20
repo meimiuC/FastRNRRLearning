@@ -71,7 +71,7 @@ $\sum_{i=0}^m \alpha_i = 1$
   896 行）。
    2. main.cpp 里是 RegParas 
   paras;，后续参数设置没有覆盖 
-  rigid_iters（src/main.cpp:42 + 参数区）。
+rigid_iters（src/main.cpp:42 + 参数区）。
    3. rigid_init() 把 paras 复制到成员 
   pars_（src/Registration.cpp:82）。
    4. DoRigid() 的循环条件是for (int iter = 0; iter < 
@@ -81,4 +81,25 @@ $\sum_{i=0}^m \alpha_i = 1$
 也就是说，在刚性初始化阶段，只做了KDTree和初始点的
 对应，没有索SVD的刚体旋转
 现在的刚体配准都是通过手动在Polyworks中进行的
+
+# Data_nu 的自适应
+GNC
+使用动态的Data_nu，使得
+## Data_nu 设定
+1. 建立初始关系，并计算残差，使用KDTree，使用的是剪枝后的数据
+2. 遍历对应点，计算距离：
+    src_mesh correspondence_pairs_[i].position
+    使用欧氏距离进行计算
+    取中位数：
+    - 理由：
+        减少错误点，离群点的影响
+
+## Data_nu 的迭代
+1. 自适应：
+2. 固定模式，每次衰减0.5 
+
+## Data_nu 的停止
+关闭动态 `nu`
+  - 关闭数据项 Welsch
+  - `|nu1 - end_nu1| < 1e-8`
 
